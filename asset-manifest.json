@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/circus-coach-app/static/css/main.db73ac63.css",
+    "main.js": "/circus-coach-app/static/js/main.7eb56415.js",
+    "index.html": "/circus-coach-app/index.html",
+    "main.db73ac63.css.map": "/circus-coach-app/static/css/main.db73ac63.css.map",
+    "main.7eb56415.js.map": "/circus-coach-app/static/js/main.7eb56415.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.db73ac63.css",
+    "static/js/main.7eb56415.js"
+  ]
+}
