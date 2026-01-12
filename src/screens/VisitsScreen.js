@@ -63,7 +63,19 @@ export default function VisitsScreen() {
     isActive: true,
   });
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Changed from 'sm' to 'md' for better mobile detection
+
+  // Sync mobileSelectedDay with selectedDate on mount and when selectedDate changes
+  useEffect(() => {
+    if (selectedDate) {
+      const date = parseISO(selectedDate);
+      // Only update if dates are different to avoid infinite loops
+      if (!isSameDay(mobileSelectedDay, date)) {
+        setMobileSelectedDay(date);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]); // Only depend on selectedDate to avoid loops
 
   // Get coach color (same as LessonsScreen)
   const getCoachColor = (coachId) => {

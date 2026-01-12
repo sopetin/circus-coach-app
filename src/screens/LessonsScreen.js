@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -57,7 +57,24 @@ export default function LessonsScreen() {
   const [editingLessonForParticipants, setEditingLessonForParticipants] = useState(null);
   const [participantSearchQuery, setParticipantSearchQuery] = useState('');
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Changed from 'sm' to 'md' for better mobile detection
+
+  // Sync mobileSelectedDay with calendarDate on mount and when calendarDate changes
+  useEffect(() => {
+    // Sync mobile day with the week's start date when calendar changes
+    const weekStart = startOfWeek(calendarDate, { weekStartsOn: 1 });
+    if (!isSameDay(mobileSelectedDay, weekStart) && !isSameDay(mobileSelectedDay, calendarDate)) {
+      // Set to today if it's in the current week, otherwise set to week start
+      const today = new Date();
+      const weekEnd = endOfWeek(calendarDate, { weekStartsOn: 1 });
+      if (today >= weekStart && today <= weekEnd) {
+        setMobileSelectedDay(today);
+      } else {
+        setMobileSelectedDay(weekStart);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarDate]); // Only depend on calendarDate
 
   // Generate occurrences for a lesson series
   const generateOccurrences = (lesson) => {
