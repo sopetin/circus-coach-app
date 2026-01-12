@@ -25,14 +25,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Alert,
   Avatar,
   InputAdornment,
   ToggleButtonGroup,
   ToggleButton,
   Snackbar,
-  useMediaQuery,
-  useTheme,
   Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -44,7 +41,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import UndoIcon from '@mui/icons-material/Undo';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useApp } from '../context/AppContext';
-import { format, parseISO, isAfter, isBefore, isSameDay, addDays, getDay, startOfWeek, differenceInWeeks, differenceInMonths, differenceInDays } from 'date-fns';
+import { format, addDays, getDay, differenceInWeeks, differenceInMonths, differenceInDays } from 'date-fns';
 import { getAnimalEmoji } from '../utils/animalEmojis';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -71,6 +68,7 @@ export default function StudentsScreen() {
   const [undoSnackbar, setUndoSnackbar] = useState({ open: false, studentId: null, previousData: null });
 
   // Listen for openStudentProfile event from Visits screen
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handleOpenProfile = (event) => {
       const { studentId } = event.detail;
@@ -83,6 +81,7 @@ export default function StudentsScreen() {
     return () => {
       window.removeEventListener('openStudentProfile', handleOpenProfile);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.students]);
 
   // Sync editingStudent with state updates (e.g., after payment)
@@ -109,9 +108,8 @@ export default function StudentsScreen() {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.students, editingStudent?.id, dialogOpen]);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   // Calculate pay due (weeks/months since last payment)
   const calculatePayDue = (student) => {
@@ -305,6 +303,7 @@ export default function StudentsScreen() {
   };
 
   // Auto-save on form data change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!dialogOpen || !formData.name.trim()) return;
     
@@ -372,6 +371,7 @@ export default function StudentsScreen() {
       studentData.editHistory = [];
       dispatch({ type: 'ADD_STUDENT', payload: studentData });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, dialogOpen, editingStudent]);
 
   const handlePay = (student, lessons = 8) => {
@@ -457,6 +457,7 @@ export default function StudentsScreen() {
     }));
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleMenuOpen = (event, student) => {
     setAnchorEl(event.currentTarget);
     setSelectedStudent(student);
@@ -467,6 +468,7 @@ export default function StudentsScreen() {
     setSelectedStudent(null);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const getClassSeriesName = (seriesId) => {
     const series = state.lessons.find(l => l.id === seriesId);
     if (!series) return 'Unknown';
@@ -533,6 +535,7 @@ export default function StudentsScreen() {
   };
 
   // Filter students based on search query and filter type
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filteredStudents = useMemo(() => {
     let students = state.students;
     
@@ -605,6 +608,7 @@ export default function StudentsScreen() {
     }
     
     return sortedStudents;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.students, searchQuery, filterType, sortBy, studentOrder]);
 
   return (
@@ -1032,7 +1036,6 @@ export default function StudentsScreen() {
                           </Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {lessons.missedLessons.map((lesson, idx) => {
-                              const lessonObj = state.lessons.find(l => l.id === lesson.seriesId);
                               return (
                                 <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                                   <Chip

@@ -30,7 +30,6 @@ import {
   Divider,
 } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
-import UndoIcon from '@mui/icons-material/Undo';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import PersonIcon from '@mui/icons-material/Person';
@@ -38,14 +37,12 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useApp } from '../context/AppContext';
-import { useNavigate } from 'react-router-dom';
-import { format, parseISO, getDay, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays, startOfMonth, endOfMonth, isAfter, isBefore } from 'date-fns';
+import { format, parseISO, getDay, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays } from 'date-fns';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function VisitsScreen() {
   const { state, dispatch } = useApp();
-  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [calendarWeek, setCalendarWeek] = useState(new Date());
   const [mobileSelectedDay, setMobileSelectedDay] = useState(new Date()); // For mobile one-day view
@@ -146,6 +143,7 @@ export default function VisitsScreen() {
   }, [availableLessons, state.coaches]);
 
   // Initialize on mount and when date changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (availableLessons.length > 0 && availableCoaches.length > 0) {
       if (!isInitialized || !selectedCoach) {
@@ -159,6 +157,7 @@ export default function VisitsScreen() {
       setSelectedLesson('');
       setIsInitialized(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, availableLessons.length, availableCoaches.length, isInitialized, selectedCoach]);
 
   // Auto-select first class when coach is selected or changes
@@ -181,6 +180,7 @@ export default function VisitsScreen() {
   }, [selectedCoach, availableLessons, selectedDate, selectedLesson]);
 
   // Keep selectedStudentForProfile in sync with state updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (selectedStudentForProfile && profileDialogOpen) {
       const updatedStudent = state.students.find(s => s.id === selectedStudentForProfile.id);
@@ -207,6 +207,7 @@ export default function VisitsScreen() {
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.students, profileDialogOpen]);
 
   // Calculate lessons for a student (same as StudentsScreen)
@@ -335,6 +336,7 @@ export default function VisitsScreen() {
     }));
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleProfileSave = () => {
     if (!selectedStudentForProfile || !profileFormData.name.trim()) return;
 
@@ -640,10 +642,6 @@ export default function VisitsScreen() {
   };
 
   const students = getStudentsForLesson();
-  const hasNegativeBalance = (student) => {
-    const remaining = calculateStudentAvailableLessons(student);
-    return remaining <= 0;
-  };
 
   // Filter lessons by selected coach
   const filteredLessons = useMemo(() => {
@@ -793,7 +791,6 @@ export default function VisitsScreen() {
                 {daysOfWeek[getDay(mobileSelectedDay)]}
               </Typography>
               {(() => {
-                const dayStr = format(mobileSelectedDay, 'yyyy-MM-dd');
                 const occurrences = getOccurrencesForDate(mobileSelectedDay);
                 if (occurrences.length === 0) {
                   return (
@@ -1415,7 +1412,6 @@ export default function VisitsScreen() {
                           </Typography>
                           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                             {lessons.missedLessons.map((lesson, idx) => {
-                              const lessonObj = state.lessons.find(l => l.id === lesson.seriesId);
                               return (
                                 <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                                   <Chip

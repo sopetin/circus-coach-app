@@ -32,7 +32,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { useApp } from '../context/AppContext';
-import { format, startOfWeek, addDays, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, getDay, endOfWeek } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, eachDayOfInterval, getDay, endOfWeek } from 'date-fns';
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -275,9 +275,6 @@ export default function LessonsScreen() {
   // Get day names for the week (Monday to Sunday)
   const dayNames = weekDays.map(day => {
     const dayIndex = getDay(day);
-    // getDay returns 0 for Sunday, 1 for Monday, etc.
-    // We want Monday=0, so we adjust: Sunday (0) becomes 6, others shift by -1
-    const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
     return daysOfWeek[dayIndex].substring(0, 3); // Convert to Mon, Tue, etc.
   });
 

@@ -21,7 +21,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PersonIcon from '@mui/icons-material/Person';
 import { useApp } from '../context/AppContext';
-import { format, startOfWeek, addDays, getDay } from 'date-fns';
+import { format, addDays, getDay } from 'date-fns';
 import DataRecovery from '../components/DataRecovery';
 import CoachesScreen from './CoachesScreen';
 

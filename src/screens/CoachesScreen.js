@@ -11,27 +11,16 @@ import {
   Grid,
   Card,
   CardContent,
-  Chip,
   IconButton,
   Menu,
   MenuItem,
   Tabs,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import { useApp } from '../context/AppContext';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 export default function CoachesScreen() {
   const { state, dispatch } = useApp();
@@ -41,8 +30,6 @@ export default function CoachesScreen() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [tabValue, setTabValue] = useState(0);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleOpenDialog = (coach = null) => {
     if (coach) {
