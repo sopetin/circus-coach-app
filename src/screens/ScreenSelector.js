@@ -23,35 +23,35 @@ const screens = [
     title: 'Students',
     icon: <PeopleIcon sx={{ fontSize: 60 }} />,
     description: 'Add and manage students, track membership and balance',
-    color: '#d32f2f',
+    color: '#e91e63',
   },
   {
     path: '/coaches',
     title: 'Coaches',
     icon: <PersonIcon sx={{ fontSize: 60 }} />,
     description: 'Manage coaches and view dashboards',
-    color: '#ff6f00',
+    color: '#ff6b35',
   },
   {
     path: '/lessons',
-    title: 'Lessons',
+    title: 'Classes',
     icon: <EventIcon sx={{ fontSize: 60 }} />,
-    description: 'Configure lessons and calendar',
-    color: '#fbc02d',
+    description: 'Configure classes and calendar',
+    color: '#ffd23f',
   },
   {
     path: '/visits',
     title: 'Visits',
     icon: <CheckCircleIcon sx={{ fontSize: 60 }} />,
     description: 'Track student visits and attendance',
-    color: '#388e3c',
+    color: '#4caf50',
   },
   {
     path: '/membership',
     title: 'Membership',
     icon: <SettingsIcon sx={{ fontSize: 60 }} />,
     description: 'Configure membership settings',
-    color: '#1976d2',
+    color: '#2196f3',
   },
 ];
 
@@ -62,7 +62,7 @@ export default function ScreenSelector() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom sx={{ mb: 4, fontWeight: 600 }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 4, fontWeight: 700, background: 'linear-gradient(135deg, #e91e63 0%, #ff6b35 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
         Select Screen
       </Typography>
       <Grid container spacing={3}>
@@ -71,18 +71,22 @@ export default function ScreenSelector() {
             <Card
               sx={{
                 height: '100%',
-                transition: 'transform 0.2s, box-shadow 0.2s',
+                background: `linear-gradient(135deg, ${screen.color}15 0%, ${screen.color}05 100%)`,
+                border: `1px solid ${screen.color}20`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 6,
+                  transform: 'translateY(-8px) scale(1.02)',
+                  boxShadow: `0px 12px 32px ${screen.color}40`,
+                  border: `1px solid ${screen.color}40`,
                 },
               }}
+              className="fade-in"
             >
               <CardActionArea
                 onClick={() => navigate(screen.path)}
-                sx={{ height: '100%', p: 2 }}
+                sx={{ height: '100%', p: 3 }}
               >
-                <CardContent>
+                <CardContent sx={{ p: 0 }}>
                   <Box
                     sx={{
                       display: 'flex',
@@ -92,15 +96,24 @@ export default function ScreenSelector() {
                       color: screen.color,
                     }}
                   >
-                    {screen.icon}
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        background: `linear-gradient(135deg, ${screen.color}20 0%, ${screen.color}10 100%)`,
+                        mb: 2,
+                      }}
+                    >
+                      {screen.icon}
+                    </Box>
                     <Typography
                       variant="h5"
                       component="h2"
-                      sx={{ mt: 2, mb: 1, fontWeight: 600 }}
+                      sx={{ mt: 1, mb: 1, fontWeight: 700 }}
                     >
                       {screen.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9rem' }}>
                       {screen.description}
                     </Typography>
                   </Box>

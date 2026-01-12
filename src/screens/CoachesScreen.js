@@ -117,13 +117,14 @@ export default function CoachesScreen() {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Coaches ({state.coaches.length})
         </Typography>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => handleOpenDialog()}
+          size="small"
         >
           Add Coach
         </Button>

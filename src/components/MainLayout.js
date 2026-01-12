@@ -1,178 +1,115 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
+  BottomNavigation,
+  BottomNavigationAction,
   Typography,
   Box,
-  TextField,
-  InputAdornment,
-  useMediaQuery,
   useTheme,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonIcon from '@mui/icons-material/Person';
 import EventIcon from '@mui/icons-material/Event';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
-import SearchIcon from '@mui/icons-material/Search';
-import { useApp } from '../context/AppContext';
-
-const drawerWidth = 280;
+import FestivalIcon from '@mui/icons-material/Festival';
 
 const menuItems = [
-  { path: '/', label: 'Screen Selector', icon: DashboardIcon },
   { path: '/students', label: 'Students', icon: PeopleIcon },
-  { path: '/coaches', label: 'Coaches', icon: PersonIcon },
-  { path: '/lessons', label: 'Lessons', icon: EventIcon },
+  { path: '/lessons', label: 'Classes', icon: EventIcon },
   { path: '/visits', label: 'Visits', icon: CheckCircleIcon },
-  { path: '/membership', label: 'Membership', icon: SettingsIcon },
+  { path: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
 export default function MainLayout({ children }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
-  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  const { state } = useApp();
 
-  const handleDrawerToggle = () => {
-    setDrawerOpen(!drawerOpen);
-  };
+  // Find current navigation value
+  const currentValue = menuItems.findIndex(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'));
 
-  const handleNavigation = (path) => {
-    navigate(path);
-    if (isMobile) {
-      setDrawerOpen(false);
+  const handleNavigation = (event, newValue) => {
+    if (newValue !== null && menuItems[newValue]) {
+      navigate(menuItems[newValue].path);
     }
   };
 
-  // Filter students/coaches based on search
-  const filteredData = searchQuery
-    ? {
-        students: state.students.filter(
-          s =>
-            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            s.classes?.some(c => c.toLowerCase().includes(searchQuery.toLowerCase()))
-        ),
-        coaches: state.coaches.filter(c =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase())
-        ),
-      }
-    : null;
-
-  const drawer = (
-    <Box sx={{ width: drawerWidth, pt: 2 }}>
-      <Box sx={{ px: 2, mb: 2 }}>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Box>
-      <List>
-        {menuItems.map((item) => {
-          const IconComponent = item.icon;
-          return (
-            <ListItem
-              button
-              key={item.path}
-              selected={location.pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: 'white',
-                  },
-                },
-              }}
-            >
-              <ListItemIcon>
-                <IconComponent />
-              </ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItem>
-          );
-        })}
-      </List>
-    </Box>
-  );
-
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar
         position="fixed"
         sx={{
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-          backgroundColor: 'primary.main',
+          backdropFilter: 'blur(10px)',
+          backgroundColor: 'rgba(233, 30, 99, 0.95)',
+          zIndex: theme.zIndex.drawer + 1,
         }}
       >
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Circus Coach App
-          </Typography>
+        <Toolbar sx={{ py: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexGrow: 1 }}>
+            <FestivalIcon sx={{ fontSize: 32, color: 'white' }} />
+            <Typography 
+              variant="h5" 
+              noWrap 
+              component="div" 
+              sx={{ 
+                fontWeight: 700, 
+                letterSpacing: '0.05em',
+                fontFamily: '"Roboto", sans-serif',
+                textTransform: 'uppercase',
+                fontSize: '1.5rem',
+              }}
+            >
+              CIRCUS
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant={isMobile ? 'temporary' : 'persistent'}
-        open={drawerOpen}
-        onClose={handleDrawerToggle}
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            mt: 8,
-          },
-        }}
-      >
-        {drawer}
-      </Drawer>
       <Box
         component="main"
         sx={{
           flexGrow: 1,
           p: 3,
           mt: 8,
-          width: { md: `calc(100% - ${drawerOpen ? drawerWidth : 0}px)` },
-          transition: 'width 0.3s',
+          pb: 10, // Add padding bottom for bottom navigation
         }}
       >
         {children}
       </Box>
+      <BottomNavigation
+        value={currentValue >= 0 ? currentValue : 0}
+        onChange={handleNavigation}
+        showLabels
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: theme.zIndex.drawer + 1,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+          backgroundColor: 'background.paper',
+          '& .MuiBottomNavigationAction-root': {
+            color: 'text.secondary',
+            '&.Mui-selected': {
+              color: 'primary.main',
+            },
+          },
+        }}
+      >
+        {menuItems.map((item, index) => {
+          const IconComponent = item.icon;
+          return (
+            <BottomNavigationAction
+              key={item.path}
+              label={item.label}
+              icon={<IconComponent />}
+            />
+          );
+        })}
+      </BottomNavigation>
     </Box>
   );
 }
