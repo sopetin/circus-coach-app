@@ -50,6 +50,7 @@ export default function LessonsScreen() {
     participants: [],
   });
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [mobileSelectedDay, setMobileSelectedDay] = useState(new Date()); // For mobile one-day view
   const [selectedOccurrence, setSelectedOccurrence] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [participantDrawerOpen, setParticipantDrawerOpen] = useState(false);
@@ -365,72 +366,78 @@ export default function LessonsScreen() {
         </Button>
       </Box>
 
-      {/* Week Calendar at the top */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-            </Typography>
-            <Box>
-              <IconButton onClick={() => setCalendarDate(addDays(calendarDate, -7))}>
-                <ArrowBackIosIcon />
-              </IconButton>
-              <Button onClick={() => setCalendarDate(new Date())} size="small">Today</Button>
-              <IconButton onClick={() => setCalendarDate(addDays(calendarDate, 7))}>
-                <ArrowForwardIosIcon />
-              </IconButton>
+      {/* Calendar - Week view for desktop, One-day view for mobile */}
+      {isMobile ? (
+        // Mobile: One-day calendar with day switcher
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {format(mobileSelectedDay, 'EEEE, MMM d, yyyy')}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconButton 
+                  onClick={() => setMobileSelectedDay(addDays(mobileSelectedDay, -1))}
+                  size="small"
+                >
+                  <ArrowBackIosIcon />
+                </IconButton>
+                <Button 
+                  onClick={() => setMobileSelectedDay(new Date())} 
+                  size="small"
+                  variant="outlined"
+                >
+                  Today
+                </Button>
+                <IconButton 
+                  onClick={() => setMobileSelectedDay(addDays(mobileSelectedDay, 1))}
+                  size="small"
+                >
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </Box>
             </Box>
-          </Box>
-          <Grid container spacing={1}>
-            {(() => {
-              // Calculate max occurrences for any day to set consistent height
-              const maxOccurrences = Math.max(...weekDays.map(day => getOccurrencesForDate(day).length), 1);
-              const baseHeight = 80; // Base height for header
-              const chipHeight = 28; // Height per chip
-              const chipSpacing = 4; // Spacing between chips
-              const minDayHeight = baseHeight + (maxOccurrences * (chipHeight + chipSpacing));
-              
-              return dayNames.map((day, idx) => {
-                const dayDate = weekDays[idx];
-                const occurrences = getOccurrencesForDate(dayDate);
-                const isToday = isSameDay(dayDate, new Date());
+            <Box
+              sx={{
+                minHeight: 200,
+                border: '2px solid',
+                borderColor: isSameDay(mobileSelectedDay, new Date()) ? 'primary.main' : 'divider',
+                p: 2,
+                cursor: 'pointer',
+                bgcolor: isSameDay(mobileSelectedDay, new Date()) ? 'primary.light' : 'background.paper',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                {daysOfWeek[getDay(mobileSelectedDay)]}
+              </Typography>
+              {(() => {
+                const occurrences = getOccurrencesForDate(mobileSelectedDay);
+                if (occurrences.length === 0) {
+                  return (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                      No classes scheduled
+                    </Typography>
+                  );
+                }
                 return (
-                  <Grid item xs={12/7} key={format(dayDate, 'yyyy-MM-dd')}>
-                    <Box
-                      sx={{
-                        minHeight: minDayHeight,
-                        border: '1px solid',
-                        borderColor: isToday ? 'primary.main' : 'divider',
-                        borderWidth: isToday ? 2 : 1,
-                        p: 1,
-                        cursor: occurrences.length > 0 ? 'pointer' : 'default',
-                        bgcolor: isToday ? 'primary.light' : 'background.paper',
-                        borderRadius: 1,
-                      }}
-                    onClick={(e) => {
-                      if (occurrences.length > 0) {
-                        handleOccurrenceClick(e, occurrences[0]);
-                      }
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-                      {day}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: isToday ? 600 : 400, mb: 1 }}>
-                      {format(dayDate, 'd')}
-                    </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {occurrences.map((occ) => {
                       const color = getCoachColor(occ.lesson.coachId);
                       return (
                         <Chip
                           key={occ.id}
                           label={`${occ.lesson.startTime} ${occ.lesson.name}`}
-                          size="small"
+                          size="medium"
                           sx={{
                             width: '100%',
-                            mt: 0.5,
-                            fontSize: '0.7rem',
+                            justifyContent: 'flex-start',
+                            height: 'auto',
+                            py: 1.5,
+                            fontSize: '0.9rem',
                             bgcolor: occ.cancelled ? 'grey.400' : color,
                             color: 'white',
                             textDecoration: occ.cancelled ? 'line-through' : 'none',
@@ -445,12 +452,99 @@ export default function LessonsScreen() {
                       );
                     })}
                   </Box>
-                </Grid>
-              );
-            })})()}
-          </Grid>
-        </CardContent>
-      </Card>
+                );
+              })()}
+            </Box>
+          </CardContent>
+        </Card>
+      ) : (
+        // Desktop: Week calendar view
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+              </Typography>
+              <Box>
+                <IconButton onClick={() => setCalendarDate(addDays(calendarDate, -7))}>
+                  <ArrowBackIosIcon />
+                </IconButton>
+                <Button onClick={() => setCalendarDate(new Date())} size="small">Today</Button>
+                <IconButton onClick={() => setCalendarDate(addDays(calendarDate, 7))}>
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </Box>
+            </Box>
+            <Grid container spacing={1}>
+              {(() => {
+                // Calculate max occurrences for any day to set consistent height
+                const maxOccurrences = Math.max(...weekDays.map(day => getOccurrencesForDate(day).length), 1);
+                const baseHeight = 80; // Base height for header
+                const chipHeight = 28; // Height per chip
+                const chipSpacing = 4; // Spacing between chips
+                const minDayHeight = baseHeight + (maxOccurrences * (chipHeight + chipSpacing));
+                
+                return dayNames.map((day, idx) => {
+                  const dayDate = weekDays[idx];
+                  const occurrences = getOccurrencesForDate(dayDate);
+                  const isToday = isSameDay(dayDate, new Date());
+                  return (
+                    <Grid item xs={12/7} key={format(dayDate, 'yyyy-MM-dd')}>
+                      <Box
+                        sx={{
+                          minHeight: minDayHeight,
+                          border: '1px solid',
+                          borderColor: isToday ? 'primary.main' : 'divider',
+                          borderWidth: isToday ? 2 : 1,
+                          p: 1,
+                          cursor: occurrences.length > 0 ? 'pointer' : 'default',
+                          bgcolor: isToday ? 'primary.light' : 'background.paper',
+                          borderRadius: 1,
+                        }}
+                      onClick={(e) => {
+                        if (occurrences.length > 0) {
+                          handleOccurrenceClick(e, occurrences[0]);
+                        }
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                        {day}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: isToday ? 600 : 400, mb: 1 }}>
+                        {format(dayDate, 'd')}
+                      </Typography>
+                      {occurrences.map((occ) => {
+                        const color = getCoachColor(occ.lesson.coachId);
+                        return (
+                          <Chip
+                            key={occ.id}
+                            label={`${occ.lesson.startTime} ${occ.lesson.name}`}
+                            size="small"
+                            sx={{
+                              width: '100%',
+                              mt: 0.5,
+                              fontSize: '0.7rem',
+                              bgcolor: occ.cancelled ? 'grey.400' : color,
+                              color: 'white',
+                              textDecoration: occ.cancelled ? 'line-through' : 'none',
+                              opacity: occ.cancelled ? 0.5 : 1,
+                              cursor: 'pointer',
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOccurrenceClick(e, occ);
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Grid>
+                );
+              })})()}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lesson Series List */}
       <Grid container spacing={2}>

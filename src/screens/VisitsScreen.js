@@ -48,6 +48,7 @@ export default function VisitsScreen() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [calendarWeek, setCalendarWeek] = useState(new Date());
+  const [mobileSelectedDay, setMobileSelectedDay] = useState(new Date()); // For mobile one-day view
   const [selectedCoach, setSelectedCoach] = useState('');
   const [selectedLesson, setSelectedLesson] = useState('');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -670,6 +671,10 @@ export default function VisitsScreen() {
     const newDate = format(date, 'yyyy-MM-dd');
     if (newDate !== selectedDate) {
       setSelectedDate(newDate);
+      // Sync mobile day view
+      if (isMobile) {
+        setMobileSelectedDay(date);
+      }
       // Reset selections when date changes to trigger auto-selection
       setSelectedCoach('');
       setSelectedLesson('');
@@ -680,10 +685,28 @@ export default function VisitsScreen() {
   const handleOccurrenceClick = (occurrence) => {
     // Preselect coach and class when clicking on an event
     if (occurrence.lesson) {
+      const occDate = parseISO(occurrence.date);
       setSelectedDate(occurrence.date);
+      // Sync mobile day view
+      if (isMobile) {
+        setMobileSelectedDay(occDate);
+      }
       setSelectedCoach(occurrence.lesson.coachId);
       setSelectedLesson(occurrence.lessonId);
       setIsInitialized(true);
+    }
+  };
+
+  // Sync mobile day view when day changes via switcher
+  const handleMobileDayChange = (newDay) => {
+    setMobileSelectedDay(newDay);
+    const newDate = format(newDay, 'yyyy-MM-dd');
+    if (newDate !== selectedDate) {
+      setSelectedDate(newDate);
+      // Reset selections when date changes
+      setSelectedCoach('');
+      setSelectedLesson('');
+      setIsInitialized(false);
     }
   };
 
@@ -718,73 +741,82 @@ export default function VisitsScreen() {
         </Box>
       </Box>
 
-      {/* Week Calendar with Events */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-            </Typography>
-            <Box>
-              <IconButton onClick={() => setCalendarWeek(addDays(calendarWeek, -7))}>
-                <ArrowBackIosIcon />
-              </IconButton>
-              <Button onClick={() => setCalendarWeek(new Date())} size="small">Today</Button>
-              <IconButton onClick={() => setCalendarWeek(addDays(calendarWeek, 7))}>
-                <ArrowForwardIosIcon />
-              </IconButton>
+      {/* Calendar with Events - Week view for desktop, One-day view for mobile */}
+      {isMobile ? (
+        // Mobile: One-day calendar with day switcher
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {format(mobileSelectedDay, 'EEEE, MMM d, yyyy')}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <IconButton 
+                  onClick={() => handleMobileDayChange(addDays(mobileSelectedDay, -1))}
+                  size="small"
+                >
+                  <ArrowBackIosIcon />
+                </IconButton>
+                <Button 
+                  onClick={() => handleMobileDayChange(new Date())} 
+                  size="small"
+                  variant="outlined"
+                >
+                  Today
+                </Button>
+                <IconButton 
+                  onClick={() => handleMobileDayChange(addDays(mobileSelectedDay, 1))}
+                  size="small"
+                >
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </Box>
             </Box>
-          </Box>
-          <Grid container spacing={1}>
-            {(() => {
-              // Calculate max occurrences for any day to set consistent height
-              const maxOccurrences = Math.max(...weekDays.map(day => getOccurrencesForDate(day).length), 1);
-              const baseHeight = 80; // Base height for header
-              const chipHeight = 28; // Height per chip
-              const chipSpacing = 4; // Spacing between chips
-              const minDayHeight = baseHeight + (maxOccurrences * (chipHeight + chipSpacing));
-              
-              return dayNames.map((day, idx) => {
-                const dayDate = weekDays[idx];
-                const dayStr = format(dayDate, 'yyyy-MM-dd');
-                const isSelected = dayStr === selectedDate;
-                const isToday = isSameDay(dayDate, new Date());
-                const occurrences = getOccurrencesForDate(dayDate);
+            <Box
+              onClick={() => {
+                handleDateClick(mobileSelectedDay);
+              }}
+              sx={{
+                minHeight: 200,
+                border: '2px solid',
+                borderColor: isSameDay(mobileSelectedDay, new Date()) ? 'primary.main' : 'divider',
+                p: 2,
+                cursor: 'pointer',
+                bgcolor: isSameDay(mobileSelectedDay, new Date()) ? 'primary.light' : 'background.paper',
+                borderRadius: 1,
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                {daysOfWeek[getDay(mobileSelectedDay)]}
+              </Typography>
+              {(() => {
+                const dayStr = format(mobileSelectedDay, 'yyyy-MM-dd');
+                const occurrences = getOccurrencesForDate(mobileSelectedDay);
+                if (occurrences.length === 0) {
+                  return (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                      No classes scheduled
+                    </Typography>
+                  );
+                }
                 return (
-                  <Grid item xs={12/7} key={dayStr}>
-                    <Box
-                      onClick={() => handleDateClick(dayDate)}
-                      sx={{
-                        minHeight: minDayHeight,
-                        border: isSelected ? '2px solid' : '1px solid',
-                        borderColor: isSelected ? 'primary.main' : (isToday ? 'primary.main' : 'divider'),
-                        borderWidth: (isSelected || isToday) ? 2 : 1,
-                        p: 1,
-                        cursor: 'pointer',
-                        bgcolor: isSelected ? 'grey.200' : (isToday ? 'primary.light' : 'background.paper'),
-                        borderRadius: 1,
-                        '&:hover': {
-                          bgcolor: isSelected ? 'grey.300' : 'action.hover',
-                        },
-                      }}
-                  >
-                    <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
-                      {day}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: isToday ? 600 : 400, mb: 1 }}>
-                      {format(dayDate, 'd')}
-                    </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {occurrences.map((occ) => {
                       const color = getCoachColor(occ.lesson.coachId);
                       return (
                         <Chip
                           key={occ.id}
                           label={`${occ.lesson.startTime} ${occ.lesson.name}`}
-                          size="small"
+                          size="medium"
                           sx={{
                             width: '100%',
-                            mt: 0.5,
-                            fontSize: '0.7rem',
+                            justifyContent: 'flex-start',
+                            height: 'auto',
+                            py: 1.5,
+                            fontSize: '0.9rem',
                             bgcolor: occ.cancelled ? 'grey.400' : color,
                             color: 'white',
                             textDecoration: occ.cancelled ? 'line-through' : 'none',
@@ -799,12 +831,100 @@ export default function VisitsScreen() {
                       );
                     })}
                   </Box>
-                </Grid>
-              );
-            })})()}
-          </Grid>
-        </CardContent>
-      </Card>
+                );
+              })()}
+            </Box>
+          </CardContent>
+        </Card>
+      ) : (
+        // Desktop: Week calendar view
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+              </Typography>
+              <Box>
+                <IconButton onClick={() => setCalendarWeek(addDays(calendarWeek, -7))}>
+                  <ArrowBackIosIcon />
+                </IconButton>
+                <Button onClick={() => setCalendarWeek(new Date())} size="small">Today</Button>
+                <IconButton onClick={() => setCalendarWeek(addDays(calendarWeek, 7))}>
+                  <ArrowForwardIosIcon />
+                </IconButton>
+              </Box>
+            </Box>
+            <Grid container spacing={1}>
+              {(() => {
+                // Calculate max occurrences for any day to set consistent height
+                const maxOccurrences = Math.max(...weekDays.map(day => getOccurrencesForDate(day).length), 1);
+                const baseHeight = 80; // Base height for header
+                const chipHeight = 28; // Height per chip
+                const chipSpacing = 4; // Spacing between chips
+                const minDayHeight = baseHeight + (maxOccurrences * (chipHeight + chipSpacing));
+                
+                return dayNames.map((day, idx) => {
+                  const dayDate = weekDays[idx];
+                  const dayStr = format(dayDate, 'yyyy-MM-dd');
+                  const isSelected = dayStr === selectedDate;
+                  const isToday = isSameDay(dayDate, new Date());
+                  const occurrences = getOccurrencesForDate(dayDate);
+                  return (
+                    <Grid item xs={12/7} key={dayStr}>
+                      <Box
+                        onClick={() => handleDateClick(dayDate)}
+                        sx={{
+                          minHeight: minDayHeight,
+                          border: isSelected ? '2px solid' : '1px solid',
+                          borderColor: isSelected ? 'primary.main' : (isToday ? 'primary.main' : 'divider'),
+                          borderWidth: (isSelected || isToday) ? 2 : 1,
+                          p: 1,
+                          cursor: 'pointer',
+                          bgcolor: isSelected ? 'grey.200' : (isToday ? 'primary.light' : 'background.paper'),
+                          borderRadius: 1,
+                          '&:hover': {
+                            bgcolor: isSelected ? 'grey.300' : 'action.hover',
+                          },
+                        }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                        {day}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: isToday ? 600 : 400, mb: 1 }}>
+                        {format(dayDate, 'd')}
+                      </Typography>
+                      {occurrences.map((occ) => {
+                        const color = getCoachColor(occ.lesson.coachId);
+                        return (
+                          <Chip
+                            key={occ.id}
+                            label={`${occ.lesson.startTime} ${occ.lesson.name}`}
+                            size="small"
+                            sx={{
+                              width: '100%',
+                              mt: 0.5,
+                              fontSize: '0.7rem',
+                              bgcolor: occ.cancelled ? 'grey.400' : color,
+                              color: 'white',
+                              textDecoration: occ.cancelled ? 'line-through' : 'none',
+                              opacity: occ.cancelled ? 0.5 : 1,
+                              cursor: 'pointer',
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOccurrenceClick(occ);
+                            }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  </Grid>
+                );
+              })})()}
+            </Grid>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Coach and Class Selection - Only show if classes are available for selected date */}
       {selectedDate && availableLessons.length > 0 && (

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
 import { format } from 'date-fns';
+import { loadDataFromFirebase, saveDataToFirebase, setupFirebaseListener, isFirebaseConfigured } from '../utils/firebaseSync';
 
 const AppContext = createContext();
 
@@ -244,150 +245,185 @@ function appReducer(state, action) {
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState(null);
+  const isInitialMount = useRef(true);
+  const isFirebaseUpdate = useRef(false); // Track if update is from Firebase to prevent save loop
+  const firebaseUnsubscribe = useRef(null);
 
-  // Load data from localStorage on mount (only once)
-  useEffect(() => {
-    if (isLoaded) return; // Prevent multiple loads
+  // Helper function to process and migrate data
+  const processData = (parsed) => {
+    // Check if data is already in new format (has startDate on all lessons)
+    const needsMigration = parsed.lessons && parsed.lessons.length > 0 && parsed.lessons.some(l => !l.startDate || !l.endDate);
     
-    const savedData = localStorage.getItem('circusAppData');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        
-        // Create backup before migration (only if data exists)
+    let finalData;
+    if (needsMigration) {
+      finalData = migrateData(parsed);
+      console.log('Data migrated from old format');
+    } else {
+      finalData = {
+        ...parsed,
+        lessonOccurrences: parsed.lessonOccurrences || {},
+        students: (parsed.students || []).map(s => ({
+          ...s,
+          classSeries: s.classSeries || [],
+          payments: s.payments || [],
+          visits: s.visits || [],
+          editHistory: s.editHistory || [],
+          lastPaymentDate: s.lastPaymentDate || (s.payments && s.payments.length > 0 
+            ? format(new Date(s.payments.sort((a, b) => new Date(b.date) - new Date(a.date))[0].date), 'yyyy-MM-dd')
+            : ''),
+          lessonsCount: s.lessonsCount !== undefined ? s.lessonsCount : 8,
+        })),
+        coaches: parsed.coaches || [],
+        lessons: parsed.lessons || [],
+        visits: parsed.visits || [],
+        membershipConfig: parsed.membershipConfig || {
+          lessonsPerPayment: 8,
+          freeSkipLessons: 1,
+        },
+      };
+      console.log('Data already in new format, no migration needed');
+    }
+    return finalData;
+  };
+
+  // Load data from Firebase and localStorage on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      let loadedData = null;
+      let dataSource = 'none';
+
+      // Try Firebase first if configured
+      if (isFirebaseConfigured()) {
         try {
-          const backupKey = `circusAppData_backup_${Date.now()}`;
-          localStorage.setItem(backupKey, savedData);
-          console.log('Data backed up to:', backupKey);
-        } catch (backupError) {
-          console.warn('Could not create backup:', backupError);
-        }
-        
-        // Log original data for debugging
-        console.log('Original data before migration:', {
-          coaches: parsed.coaches?.length || 0,
-          lessons: parsed.lessons?.length || 0,
-          students: parsed.students?.length || 0,
-          hasOldStructure: parsed.lessons?.some(l => !l.startDate) || false,
-        });
-        
-        // Check if data is already in new format (has startDate on all lessons)
-        const needsMigration = parsed.lessons && parsed.lessons.length > 0 && parsed.lessons.some(l => !l.startDate || !l.endDate);
-        
-        let finalData;
-        if (needsMigration) {
-          // Migrate old data structure to new format
-          finalData = migrateData(parsed);
-          console.log('Data migrated from old format');
-        } else {
-          // Data is already in new format, just ensure all fields exist
-          finalData = {
-            ...parsed,
-            lessonOccurrences: parsed.lessonOccurrences || {},
-            students: (parsed.students || []).map(s => ({
-              ...s,
-              classSeries: s.classSeries || [],
-              payments: s.payments || [],
-              visits: s.visits || [],
-              editHistory: s.editHistory || [],
-              lastPaymentDate: s.lastPaymentDate || (s.payments && s.payments.length > 0 
-                ? format(new Date(s.payments.sort((a, b) => new Date(b.date) - new Date(a.date))[0].date), 'yyyy-MM-dd')
-                : ''),
-              lessonsCount: s.lessonsCount !== undefined ? s.lessonsCount : 8,
-            })),
-            coaches: parsed.coaches || [],
-            lessons: parsed.lessons || [],
-            visits: parsed.visits || [],
-            membershipConfig: parsed.membershipConfig || {
-              lessonsPerPayment: 8,
-              freeSkipLessons: 1,
-            },
-          };
-          console.log('Data already in new format, no migration needed');
-        }
-        
-        // Log final data
-        console.log('Final data to load:', {
-          coaches: finalData.coaches?.length || 0,
-          lessons: finalData.lessons?.length || 0,
-          students: finalData.students?.length || 0,
-        });
-        
-        // Save data immediately (only if migrated)
-        if (needsMigration) {
-          try {
-            localStorage.setItem('circusAppData', JSON.stringify(finalData));
-            console.log('Migrated data saved to localStorage');
-          } catch (saveError) {
-            console.error('Error saving migrated data:', saveError);
+          const firebaseData = await loadDataFromFirebase();
+          if (firebaseData) {
+            loadedData = firebaseData;
+            dataSource = 'firebase';
+            console.log('Data loaded from Firebase');
           }
-        }
-        
-        dispatch({ type: 'LOAD_DATA', payload: finalData });
-        setIsLoaded(true);
-        setLastSaveTime(new Date());
-        console.log('Data loaded successfully:', {
-          coaches: finalData.coaches?.length || 0,
-          lessons: finalData.lessons?.length || 0,
-          students: finalData.students?.length || 0,
-        });
-      } catch (e) {
-        console.error('Error loading data:', e);
-        // Try to restore from most recent backup
-        const backups = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('circusAppData_backup_')) {
-            backups.push(key);
-          }
-        }
-        if (backups.length > 0) {
-          backups.sort().reverse();
-          const latestBackup = backups[0];
-          console.warn('Attempting to restore from backup:', latestBackup);
-          try {
-            const backupData = localStorage.getItem(latestBackup);
-            if (backupData) {
-              const parsed = JSON.parse(backupData);
-              const migrated = migrateData(parsed);
-              dispatch({ type: 'LOAD_DATA', payload: migrated });
-              setIsLoaded(true);
-              setLastSaveTime(new Date());
-              console.log('Restored from backup successfully');
-            }
-          } catch (restoreError) {
-            console.error('Failed to restore from backup:', restoreError);
-            setIsLoaded(true); // Still mark as loaded to prevent infinite loop
-          }
-        } else {
-          setIsLoaded(true); // No backups, start fresh
+        } catch (error) {
+          console.error('Error loading from Firebase:', error);
         }
       }
-    } else {
-      console.log('No saved data found in localStorage - starting fresh');
-      setIsLoaded(true);
-    }
-  }, [isLoaded]);
 
-  // Save data to localStorage whenever state changes (with debouncing and error handling)
+      // Fallback to localStorage if Firebase didn't have data
+      if (!loadedData) {
+        const savedData = localStorage.getItem('circusAppData');
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            loadedData = parsed;
+            dataSource = 'localStorage';
+            
+            // Create backup before migration (only if data exists)
+            try {
+              const backupKey = `circusAppData_backup_${Date.now()}`;
+              localStorage.setItem(backupKey, savedData);
+              console.log('Data backed up to:', backupKey);
+            } catch (backupError) {
+              console.warn('Could not create backup:', backupError);
+            }
+          } catch (e) {
+            console.error('Error parsing localStorage data:', e);
+          }
+        }
+      }
+
+      // Process and load the data
+      if (loadedData) {
+        const finalData = processData(loadedData);
+        isFirebaseUpdate.current = true; // Prevent saving back to Firebase immediately
+        dispatch({ type: 'LOAD_DATA', payload: finalData });
+        setLastSaveTime(new Date());
+        console.log(`Data loaded successfully from ${dataSource}:`, {
+          coaches: finalData.coaches?.length || 0,
+          lessons: finalData.lessons?.length || 0,
+          students: finalData.students?.length || 0,
+        });
+        
+        // If we loaded from localStorage and Firebase is configured, sync to Firebase
+        if (dataSource === 'localStorage' && isFirebaseConfigured()) {
+          setTimeout(() => {
+            saveDataToFirebase(finalData).then(success => {
+              if (success) {
+                console.log('Local data synced to Firebase');
+              }
+            });
+          }, 1000); // Small delay to ensure state is set
+        }
+      } else {
+        console.log('No saved data found - starting fresh');
+      }
+
+      isInitialMount.current = false;
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Set up Firebase real-time listener
   useEffect(() => {
-    // Don't save until initial load is complete
-    if (!isLoaded) return;
-    
+    if (!isFirebaseConfigured()) {
+      return;
+    }
+
+    // Set up listener for real-time updates
+    const unsubscribe = setupFirebaseListener((firebaseData) => {
+      if (!firebaseData) return;
+      
+      // Don't process if this is the initial load (already handled above)
+      if (isInitialMount.current) return;
+      
+      // Don't process if we just saved this data
+      if (isFirebaseUpdate.current) {
+        isFirebaseUpdate.current = false;
+        return;
+      }
+
+      console.log('Real-time update received from Firebase');
+      const finalData = processData(firebaseData);
+      isFirebaseUpdate.current = true; // Prevent saving back
+      dispatch({ type: 'LOAD_DATA', payload: finalData });
+      setLastSaveTime(new Date());
+      
+      // Also update localStorage
+      try {
+        localStorage.setItem('circusAppData', JSON.stringify(finalData));
+      } catch (error) {
+        console.error('Error updating localStorage from Firebase:', error);
+      }
+    });
+
+    firebaseUnsubscribe.current = unsubscribe;
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  // Save data to localStorage and Firebase whenever state changes (with debouncing)
+  useEffect(() => {
+    // Skip if this is an update from Firebase (to prevent save loop)
+    if (isFirebaseUpdate.current) {
+      isFirebaseUpdate.current = false;
+      return;
+    }
+
+    // Skip initial mount
+    if (isInitialMount.current) {
+      return;
+    }
+
     // Debounce: wait 500ms before saving to avoid too many writes
     const timeoutId = setTimeout(() => {
+      // Save to localStorage
       try {
-        const dataToSave = JSON.stringify(state);
-        localStorage.setItem('circusAppData', dataToSave);
+        localStorage.setItem('circusAppData', JSON.stringify(state));
         setLastSaveTime(new Date());
-        console.log('Data auto-saved:', {
-          coaches: state.coaches?.length || 0,
-          lessons: state.lessons?.length || 0,
-          students: state.students?.length || 0,
-          timestamp: new Date().toISOString(),
-        });
+        console.log('Data saved to localStorage');
       } catch (error) {
         console.error('Error saving to localStorage:', error);
         // Try to clear some space if quota exceeded
@@ -420,10 +456,23 @@ export function AppProvider({ children }) {
           }
         }
       }
+
+      // Save to Firebase if configured
+      if (isFirebaseConfigured()) {
+        saveDataToFirebase(state).then(success => {
+          if (success) {
+            console.log('Data saved to Firebase');
+          } else {
+            console.warn('Failed to save to Firebase');
+          }
+        }).catch(error => {
+          console.error('Error saving to Firebase:', error);
+        });
+      }
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [state, isLoaded]);
+  }, [state]);
 
   // Also save before page unload (immediate save, no debounce)
   useEffect(() => {
@@ -431,6 +480,14 @@ export function AppProvider({ children }) {
       try {
         localStorage.setItem('circusAppData', JSON.stringify(state));
         console.log('Data saved before page unload');
+        
+        // Also save to Firebase synchronously if possible
+        if (isFirebaseConfigured()) {
+          // Use sendBeacon or similar for reliable save on unload
+          saveDataToFirebase(state).catch(error => {
+            console.error('Error saving to Firebase on unload:', error);
+          });
+        }
       } catch (error) {
         console.error('Error saving before unload:', error);
       }
@@ -441,11 +498,24 @@ export function AppProvider({ children }) {
   }, [state]);
 
   // Expose save function for manual saves
-  const saveData = React.useCallback(() => {
+  const saveData = React.useCallback(async () => {
     try {
       localStorage.setItem('circusAppData', JSON.stringify(state));
       setLastSaveTime(new Date());
-      console.log('Data manually saved');
+      console.log('Data manually saved to localStorage');
+      
+      // Also save to Firebase if configured
+      if (isFirebaseConfigured()) {
+        const success = await saveDataToFirebase(state);
+        if (success) {
+          console.log('Data manually saved to Firebase');
+          return true;
+        } else {
+          console.warn('Failed to save to Firebase');
+          return false;
+        }
+      }
+      
       return true;
     } catch (error) {
       console.error('Error manually saving:', error);
